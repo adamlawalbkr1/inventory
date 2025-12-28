@@ -1,0 +1,12 @@
+Index Trace: Page=users, Session=Set
+Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
+Index Trace: Page=users, Session=Set
+Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
+Index Trace: Page=history, Session=Set
+Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
+Index Trace: Page=history, Session=Set
+Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
+Index Trace: Page=profile, Session=Set
+Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
+Index Trace: Page=dashboard, Session=Set
+Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
