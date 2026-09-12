@@ -24,9 +24,63 @@
     $stmt = $pdo->query("SELECT COUNT(*) FROM products");
     $total_products = $stmt->fetchColumn();
 
-    // Total Revenue (All Time)
-    $stmt = $pdo->query("SELECT SUM(total_amount) FROM sales");
-    $total_revenue = $stmt->fetchColumn() ?: 0.00;
+    $stock_summary = $pdo->query("SELECT
+                                                  COALESCE(SUM(CASE WHEN product_type = 'standard' THEN stock_quantity ELSE 0 END), 0) AS units_in_stock,
+                                                  COALESCE(SUM(CASE WHEN product_type = 'standard' THEN stock_quantity * cost_price ELSE 0 END), 0) AS stock_cost,
+                                                  COALESCE(SUM(CASE WHEN product_type = 'standard' THEN stock_quantity * selling_price ELSE 0 END), 0) AS stock_value
+                                              FROM products")->fetch(PDO::FETCH_ASSOC);
+    $stock_margin = (float) $stock_summary['stock_value'] - (float) $stock_summary['stock_cost'];
+
+    // Daily revenue resets automatically at 12:00 AM UTC+1. Sales remain in history.
+    $today_start = business_day_start();
+    $tomorrow_start = $today_start->modify('+1 day');
+    $stmt = $pdo->prepare("SELECT SUM(total_amount) FROM sales WHERE status = 'fulfilled' AND sale_date >= ? AND sale_date < ?");
+    $stmt->execute([
+        $today_start->format('Y-m-d H:i:s'),
+        $tomorrow_start->format('Y-m-d H:i:s')
+    ]);
+    $daily_revenue = $stmt->fetchColumn() ?: 0.00;
+
+    $stmt = $pdo->prepare("SELECT COALESCE(SUM(si.quantity), 0)
+                           FROM sale_items si
+                           JOIN sales s ON s.id = si.sale_id
+                           WHERE s.status = 'fulfilled' AND s.sale_date >= ? AND s.sale_date < ?");
+    $stmt->execute([
+        $today_start->format('Y-m-d H:i:s'),
+        $tomorrow_start->format('Y-m-d H:i:s')
+    ]);
+    $daily_items_sold = $stmt->fetchColumn();
+
+    $stmt = $pdo->prepare("SELECT COALESCE(SUM(si.quantity * CASE WHEN p.product_type = 'prepared' THEN COALESCE((SELECT SUM(ri.quantity_required * rm.cost_per_unit) / r.servings_produced FROM recipes r JOIN recipe_items ri ON ri.recipe_id = r.id JOIN raw_materials rm ON rm.id = ri.raw_material_id WHERE r.product_id = p.id), 0) ELSE p.cost_price END), 0) FROM sale_items si JOIN sales s ON s.id = si.sale_id JOIN products p ON p.id = si.product_id WHERE s.status = 'fulfilled' AND s.sale_date >= ? AND s.sale_date < ?");
+    $stmt->execute([
+        $today_start->format('Y-m-d H:i:s'),
+        $tomorrow_start->format('Y-m-d H:i:s')
+    ]);
+    $daily_cost = $stmt->fetchColumn() ?: 0.00;
+
+    $stmt = $pdo->prepare("SELECT COALESCE(SUM(amount), 0) FROM expenses WHERE expense_date >= ? AND expense_date < ?");
+    $stmt->execute([
+        $today_start->format('Y-m-d H:i:s'),
+        $tomorrow_start->format('Y-m-d H:i:s')
+    ]);
+    $daily_expenses = $stmt->fetchColumn() ?: 0.00;
+    $net_profit = $daily_revenue - $daily_cost - $daily_expenses;
+
+    $stmt = $pdo->prepare("SELECT p.name,
+                                  SUM(si.quantity) AS units_sold,
+                                  SUM(si.quantity * si.price_at_sale) AS item_revenue,
+                                  SUM(si.quantity * p.cost_price) AS item_cost
+                           FROM sale_items si
+                           JOIN sales s ON s.id = si.sale_id
+                           JOIN products p ON p.id = si.product_id
+                           WHERE s.status = 'fulfilled' AND s.sale_date >= ? AND s.sale_date < ?
+                           GROUP BY p.id, p.name
+                           ORDER BY units_sold DESC, item_revenue DESC");
+    $stmt->execute([
+        $today_start->format('Y-m-d H:i:s'),
+        $tomorrow_start->format('Y-m-d H:i:s')
+    ]);
+    $sales_by_item = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // Low Stock Items
     $stmt = $pdo->query("SELECT COUNT(*) FROM products WHERE stock_quantity <= min_stock_level");
@@ -40,16 +94,27 @@
     $dates = [];
     $totals = [];
     for ($i = 6; $i >= 0; $i--) {
-        $date = date('Y-m-d', strtotime("-$i days"));
-        $dates[] = date('D, j M', strtotime($date));
-        
-        $stmt = $pdo->prepare("SELECT SUM(total_amount) FROM sales WHERE DATE(sale_date) = ?");
-        $stmt->execute([$date]);
+        $day_start = business_day_start($i);
+        $day_end = $day_start->modify('+1 day');
+        $dates[] = $day_start->format('D, j M');
+
+        $stmt = $pdo->prepare("SELECT SUM(total_amount) FROM sales WHERE status = 'fulfilled' AND sale_date >= ? AND sale_date < ?");
+        $stmt->execute([
+            $day_start->format('Y-m-d H:i:s'),
+            $day_end->format('Y-m-d H:i:s')
+        ]);
         $totals[] = $stmt->fetchColumn() ?: 0;
     }
 
     // --- 3. RECENT TRANSACTIONS (Limit 5) ---
-    $stmt = $pdo->query("SELECT * FROM sales ORDER BY sale_date DESC LIMIT 5");
+    $stmt = $pdo->query("SELECT s.*,
+                                (SELECT GROUP_CONCAT(CONCAT(p.name, ' (x', si.quantity, ')') ORDER BY p.name SEPARATOR ', ')
+                                FROM sale_items si
+                                 JOIN products p ON si.product_id = p.id
+                                 WHERE si.sale_id = s.id) as item_summary
+                         FROM sales s
+                         WHERE s.status = 'fulfilled'
+                         ORDER BY s.sale_date DESC LIMIT 5");
     $recent_sales = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     // --- 4. STOCK ALERTS (Low Stock OR Expiring) ---
@@ -83,11 +148,28 @@
                 <div class="card-body p-4">
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
-                            <h6 class="text-muted text-uppercase mb-1 small fw-semibold ls-1">Revenue</h6>
-                            <h3 class="fw-bold mb-0 text-dark">₦<?php echo number_format($total_revenue, 2); ?></h3>
+                            <h6 class="text-muted text-uppercase mb-1 small fw-semibold ls-1">Today's Revenue</h6>
+                            <h3 class="fw-bold mb-0 text-dark">₦<?php echo number_format($daily_revenue, 2); ?></h3>
                         </div>
                         <div class="icon-box bg-success-subtle text-success rounded-circle">
                             <i class="bi bi-currency-dollar fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card 3: Items Sold -->
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100 card-hover">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <h6 class="text-muted text-uppercase mb-1 small fw-semibold ls-1">Today's Items Sold</h6>
+                            <h3 class="fw-bold mb-0 text-dark"><?php echo number_format($daily_items_sold); ?></h3>
+                        </div>
+                        <div class="icon-box bg-info-subtle text-info rounded-circle">
+                            <i class="bi bi-bag-check fs-4"></i>
                         </div>
                     </div>
                 </div>
@@ -113,6 +195,40 @@
             </a>
         </div>
 
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="card border-0 shadow-sm h-100 card-hover">
+                <div class="card-body p-4">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <h6 class="text-muted text-uppercase mb-1 small fw-semibold ls-1">Today's Expenses</h6>
+                            <h3 class="fw-bold mb-0 text-danger">₦<?php echo number_format($daily_expenses, 2); ?></h3>
+                        </div>
+                        <div class="icon-box bg-danger-subtle text-danger rounded-circle">
+                            <i class="bi bi-cash-stack fs-4"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <?php if ($_SESSION['role'] === 'admin'): ?>
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card border-0 shadow-sm h-100 card-hover">
+                    <div class="card-body p-4">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <h6 class="text-muted text-uppercase mb-1 small fw-semibold ls-1">Today's Net Profit</h6>
+                                <h3 class="fw-bold mb-0 <?php echo $net_profit >= 0 ? 'text-success' : 'text-danger'; ?>">₦<?php echo number_format($net_profit, 2); ?></h3>
+                            </div>
+                            <div class="icon-box bg-success-subtle text-success rounded-circle">
+                                <i class="bi bi-graph-up-arrow fs-4"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <?php endif; ?>
+
         <!-- Card 4: Expiring -->
         <div class="col-12 col-sm-6 col-xl-3">
             <a href="<?= url('inventory?filter=expired') ?>" class="text-decoration-none">
@@ -130,6 +246,47 @@
                     </div>
                 </div>
             </a>
+        </div>
+    </div>
+
+    <!-- Stock Bookkeeping -->
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="card-title fw-bold text-dark mb-0">Stock Bookkeeping</h5>
+                    <a href="<?= url('inventory') ?>" class="btn btn-sm btn-light text-primary">View Inventory</a>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-6 col-xl-3">
+                            <div class="stock-summary-item">
+                                <span class="text-muted small d-block">Units in Stock</span>
+                                <strong class="fs-4"><?php echo number_format((int) $stock_summary['units_in_stock']); ?></strong>
+                            </div>
+                        </div>
+                        <div class="col-6 col-xl-3">
+                            <div class="stock-summary-item">
+                                <span class="text-muted small d-block">Estimated Cost</span>
+                                <strong class="fs-4">₦<?php echo number_format((float) $stock_summary['stock_cost'], 2); ?></strong>
+                            </div>
+                        </div>
+                        <div class="col-6 col-xl-3">
+                            <div class="stock-summary-item">
+                                <span class="text-muted small d-block">Estimated Sale Value</span>
+                                <strong class="fs-4 text-primary">₦<?php echo number_format((float) $stock_summary['stock_value'], 2); ?></strong>
+                            </div>
+                        </div>
+                        <div class="col-6 col-xl-3">
+                            <div class="stock-summary-item">
+                                <span class="text-muted small d-block">Potential Gross Margin</span>
+                                <strong class="fs-4 text-success">₦<?php echo number_format($stock_margin, 2); ?></strong>
+                            </div>
+                        </div>
+                    </div>
+                    <p class="text-muted small mb-0 mt-3">Estimates use current stock quantities and the recorded cost and selling prices.</p>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -169,6 +326,7 @@
                                         </div>
                                         <div>
                                             <p class="mb-0 fw-medium text-dark small"><?php echo htmlspecialchars($sale['receipt_number']); ?></p>
+                                            <small class="d-block text-dark text-truncate" style="max-width: 210px;" title="<?php echo htmlspecialchars($sale['item_summary'] ?? 'Unknown item'); ?>"><?php echo htmlspecialchars($sale['item_summary'] ?? 'Unknown item'); ?></small>
                                             <small class="text-muted" style="font-size: 0.75rem;"><?php echo date('M j, g:i A', strtotime($sale['sale_date'])); ?></small>
                                         </div>
                                     </div>
@@ -176,6 +334,50 @@
                                 </div>
                             <?php endforeach; ?>
                         <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Row 3: Sales by Item -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="card-title fw-bold text-dark mb-0">Sales by Item</h5>
+                    <span class="text-muted small">Today</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="bg-light text-muted small text-uppercase">
+                                <tr>
+                                    <th class="ps-4">Product</th>
+                                    <th>Units Sold</th>
+                                    <th>Revenue</th>
+                                    <th>Cost</th>
+                                    <th class="text-end pe-4">Profit</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (empty($sales_by_item)): ?>
+                                    <tr><td colspan="5" class="text-center py-4 text-muted small">No item sales recorded today.</td></tr>
+                                <?php else: ?>
+                                    <?php foreach ($sales_by_item as $item):
+                                        $item_profit = (float) $item['item_revenue'] - (float) $item['item_cost'];
+                                    ?>
+                                        <tr>
+                                            <td class="ps-4 fw-medium text-dark"><?php echo htmlspecialchars($item['name']); ?></td>
+                                            <td><?php echo number_format((int) $item['units_sold']); ?></td>
+                                            <td>₦<?php echo number_format((float) $item['item_revenue'], 2); ?></td>
+                                            <td>₦<?php echo number_format((float) $item['item_cost'], 2); ?></td>
+                                            <td class="text-end pe-4 fw-semibold <?php echo $item_profit >= 0 ? 'text-success' : 'text-danger'; ?>">₦<?php echo number_format($item_profit, 2); ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -223,7 +425,7 @@
                                             <?php endif; ?>
                                         </td>
                                         <td class="text-end pe-4">
-                                            <a href="<?= url('inventory?search='.urlencode($item['name'])) ?>" class="btn btn-sm btn-outline-primary">Manage</a>
+                                            <a href="<?= url('inventory?search=' . urlencode($item['name'])) ?>" class="btn btn-sm btn-outline-primary">Manage</a>
                                         </td>
                                     </tr>
                                     <?php endforeach; ?>
@@ -243,8 +445,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Gradient Background
     const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-    gradient.addColorStop(0, 'rgba(79, 70, 229, 0.2)');
-    gradient.addColorStop(1, 'rgba(79, 70, 229, 0)');
+    gradient.addColorStop(0, 'rgba(249, 115, 22, 0.2)');
+    gradient.addColorStop(1, 'rgba(249, 115, 22, 0)');
 
     new Chart(ctx, {
         type: 'line',
@@ -253,10 +455,10 @@ document.addEventListener('DOMContentLoaded', function() {
             datasets: [{
                 label: 'Revenue (₦)',
                 data: <?php echo json_encode($totals); ?>,
-                borderColor: '#4F46E5', // Primary Indigo
+                borderColor: '#F97316',
                 backgroundColor: gradient,
                 borderWidth: 3,
-                pointBackgroundColor: '#4F46E5',
+                pointBackgroundColor: '#F97316',
                 pointBorderColor: '#fff',
                 pointBorderWidth: 2,
                 pointRadius: 5,

@@ -1,8 +1,8 @@
 <?php
 // actions/save_sale.php
 session_start();
-require_once '../config/db.php';
 require_once '../config/app.php';
+require_once '../config/db.php';
 
 header('Content-Type: application/json');
 
@@ -32,11 +32,12 @@ try {
 
     $receipt_number = 'REC-' . strtoupper(uniqid()); // Simple unique ID
     
-    $stmt = $pdo->prepare("INSERT INTO sales (user_id, receipt_number, total_amount, sale_date) VALUES (:uid, :rec, :total, NOW())");
+    $stmt = $pdo->prepare("INSERT INTO sales (user_id, receipt_number, total_amount, sale_date) VALUES (:uid, :rec, :total, :sale_date)");
     $stmt->execute([
         ':uid' => $_SESSION['user_id'],
         ':rec' => $receipt_number,
-        ':total' => $total_amount
+        ':total' => $total_amount,
+        ':sale_date' => date('Y-m-d H:i:s')
     ]);
     
     $sale_id = $pdo->lastInsertId();

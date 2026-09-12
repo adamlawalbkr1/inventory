@@ -2,7 +2,7 @@
 <div class="sidebar d-flex flex-column p-4">
     <a href="<?= url('dashboard') ?>" class="d-flex align-items-center mb-4 mb-md-0 text-white text-decoration-none">
         <i class="bi bi-box-seam-fill fs-3 me-2 text-primary"></i>
-        <h5 class="fs-5 fw-bold mb-0">AbStock</h5>
+        <h5 class="fs-5 fw-bold mb-0">Da'am Fast Food</h5>
     </a>
     
     <div class="mt-4 mb-4 text-white-50">

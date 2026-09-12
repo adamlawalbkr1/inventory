@@ -29,7 +29,8 @@ if (!isset($_SESSION['user_id']) && !in_array($page, $public_pages)) {
 }
 
 // 3. User Role Authorization
-$admin_only_pages = ['inventory', 'users'];
+$admin_only_pages = ['inventory', 'users', 'materials', 'recipes', 'stock_book'];
+$staff_pages = ['pos', 'pending_orders', 'history', 'expenses', 'dashboard', 'profile', 'menu_flier'];
 if (isset($_SESSION['role']) && $_SESSION['role'] !== 'admin' && in_array($page, $admin_only_pages)) {
     redirect('dashboard?error=Access Denied');
 }

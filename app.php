@@ -40,7 +40,7 @@ function redirect($path) {
     // Parse URL to separate path and query
     $parts = parse_url($path);
     $base_path = $parts['path'] ?? $path;
-
+    
     // Build query string with proper encoding
     $query_string = '';
     if (isset($parts['query'])) {
@@ -49,7 +49,7 @@ function redirect($path) {
         // Rebuild with proper encoding
         $query_string = '?' . http_build_query($query_params);
     }
-
+    
     $final_url = url($base_path) . $query_string;
     header("Location: " . $final_url);
     exit();

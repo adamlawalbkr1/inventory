@@ -10,3 +10,95 @@ Index Trace: Page=profile, Session=Set
 Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
 Index Trace: Page=dashboard, Session=Set
 Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
+Index Trace: Page=dashboard, Session=Null
+Index Trace: Redirecting to login
+Index Trace: Page=login, Session=Null
+Header Trace: Routed=Yes, IsLogin=1, DoRedirect=No
+Index Trace: Page=dashboard, Session=Null
+Index Trace: Redirecting to login
+Index Trace: Page=login, Session=Null
+Header Trace: Routed=Yes, IsLogin=1, DoRedirect=No
+Login Debug: User 'yusuff@gmail.com' NOT found in DB.Login Debug: Password mismatch or user not found for 'yusuff@gmail.com'.Index Trace: Page=login, Session=Null
+Header Trace: Routed=Yes, IsLogin=1, DoRedirect=No
+Login Debug: User 'user@gmail.com' NOT found in DB.Login Debug: Password mismatch or user not found for 'user@gmail.com'.Index Trace: Page=login, Session=Null
+Header Trace: Routed=Yes, IsLogin=1, DoRedirect=No
+Login Debug: User 'user@gmail.com' NOT found in DB.Login Debug: Password mismatch or user not found for 'user@gmail.com'.Index Trace: Page=login, Session=Null
+Header Trace: Routed=Yes, IsLogin=1, DoRedirect=No
+Login Debug: User 'user@gmail.com' NOT found in DB.Login Debug: Password mismatch or user not found for 'user@gmail.com'.Index Trace: Page=login, Session=Null
+Header Trace: Routed=Yes, IsLogin=1, DoRedirect=No
+Login Debug: User found for 'admin'. Stored Pass: 'password', Input Pass: 'admin123'Login Debug: Password mismatch or user not found for 'admin'.Index Trace: Page=login, Session=Null
+Header Trace: Routed=Yes, IsLogin=1, DoRedirect=No
+Login Debug: User found for 'admin'. Stored Pass: 'password', Input Pass: 'password123'Login Debug: Password mismatch or user not found for 'admin'.Index Trace: Page=login, Session=Null
+Header Trace: Routed=Yes, IsLogin=1, DoRedirect=No
+Login Debug: User found for 'admin'. Stored Pass: 'password', Input Pass: 'password'Login Debug: Password match successful for 'admin'.Index Trace: Page=dashboard, Session=Set
+Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
+Index Trace: Page=dashboard, Session=Null
+Index Trace: Redirecting to login
+Index Trace: Page=login, Session=Null
+Header Trace: Routed=Yes, IsLogin=1, DoRedirect=No
+Login Debug: User 'yusuf@example.com' NOT found in DB.Login Debug: Password mismatch or user not found for 'yusuf@example.com'.Index Trace: Page=login, Session=Null
+Header Trace: Routed=Yes, IsLogin=1, DoRedirect=No
+Login Debug: User 'yusuf@example.com' NOT found in DB.Login Debug: Password mismatch or user not found for 'yusuf@example.com'.Index Trace: Page=login, Session=Null
+Header Trace: Routed=Yes, IsLogin=1, DoRedirect=No
+Login Debug: User found for 'admin'. Stored Pass: 'password', Input Pass: 'password'Login Debug: Password match successful for 'admin'.Index Trace: Page=dashboard, Session=Set
+Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
+Index Trace: Page=inventory, Session=Set
+Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
+Index Trace: Page=users, Session=Set
+Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
+Index Trace: Page=history, Session=Set
+Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
+Index Trace: Page=profile, Session=Set
+Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
+Index Trace: Page=login, Session=Null
+Header Trace: Routed=Yes, IsLogin=1, DoRedirect=No
+Login Debug: User 'staf' NOT found in DB.Login Debug: Password mismatch or user not found for 'staf'.Index Trace: Page=login, Session=Null
+Header Trace: Routed=Yes, IsLogin=1, DoRedirect=No
+Login Debug: User found for 'staff'. Stored Pass: 'password', Input Pass: 'password'Login Debug: Password match successful for 'staff'.Index Trace: Page=dashboard, Session=Set
+Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
+Index Trace: Page=pos, Session=Set
+Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
+Index Trace: Page=receipt, Session=Set
+Index Trace: Page=profile, Session=Set
+Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
+Index Trace: Page=dashboard, Session=Set
+Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
+Index Trace: Page=pos, Session=Set
+Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
+Index Trace: Page=history, Session=Set
+Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
+Index Trace: Page=profile, Session=Set
+Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
+Index Trace: Page=dashboard, Session=Set
+Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
+Index Trace: Page=inventory, Session=Set
+Index Trace: Page=dashboard, Session=Set
+Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
+Index Trace: Page=inventory, Session=Set
+Index Trace: Page=dashboard, Session=Set
+Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
+Index Trace: Page=inventory, Session=Set
+Index Trace: Page=dashboard, Session=Set
+Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
+Index Trace: Page=dashboard, Session=Set
+Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
+Index Trace: Page=dashboard, Session=Set
+Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
+Index Trace: Page=history, Session=Set
+Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
+Index Trace: Page=pos, Session=Set
+Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
+Index Trace: Page=dashboard, Session=Set
+Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
+Index Trace: Page=pos, Session=Set
+Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
+Index Trace: Page=pos, Session=Set
+Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
+Index Trace: Page=history, Session=Set
+Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
+Index Trace: Page=profile, Session=Set
+Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
+Index Trace: Page=dashboard, Session=Set
+Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
+Index Trace: Page=pos, Session=Set
+Header Trace: Routed=Yes, IsLogin=, DoRedirect=No
